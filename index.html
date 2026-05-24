@@ -1772,22 +1772,29 @@ function sendMessage(){
   sendToServer(msg);
 }
 
-function sendToServer(msg){
-  fetch(`${CF.apiBase}/api/send`,{
-    method:'POST',
-    headers:{'Content-Type':'application/json'},
-    body:JSON.stringify(msg)
-  }).then(res=>{
-    if(res.ok){
-      // Update status to delivered (optimistic)
-      setTimeout(()=>{
-        updateMsgStatus(msg.msgId,'delivered');
-        setTimeout(()=>updateMsgStatus(msg.msgId,'delivered'),2000);
-      },600);
+// Ensure outbound looks exactly like this:
+function sendToServer(msg) {
+  fetch('/api/send', { // Or your designated signaling URL
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(msg)
+  }).catch(e => console.error("Send failed:", e));
+}
+
+// Ensure inbound matches the same properties:
+async function pullIncomingMessages() {
+  if (!state.currentChatId) return;
+  try {
+    const res = await fetch(`/api/pull?id=${state.profile.id}`);
+    if (res.ok) {
+      const newMsgs = await res.json();
+      // Ensure it iterates over the same .s, .r, and .ts layout!
+      const arch = getArchive();
+      // Append, filter out duplicates, and render
+      // ...
+      renderMessages();
     }
-  }).catch(()=>{
-    updateMsgStatus(msg.msgId,'sent');
-  });
+  } catch(e) { console.error("Pull failed:", e); }
 }
 
 function updateMsgStatus(msgId,status){
